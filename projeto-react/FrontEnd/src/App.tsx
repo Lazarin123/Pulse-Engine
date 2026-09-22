@@ -6,8 +6,8 @@ import { LiveLogStream } from './components/LiveLogStream';
 import { ChaosPanel } from './components/ChaosPanel';
 import { Activity, Shield, Server, Gauge, Radio } from 'lucide-react';
 
-const API_URL = 'http://localhost:4000';
-const WS_URL = 'ws://localhost:4000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000';
 
 export const App: React.FC = () => {
   const [nodes, setNodes] = useState<MicroserviceNode[]>([]);
