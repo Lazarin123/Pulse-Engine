@@ -1,122 +1,148 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useEffect, useState } from 'react';
+import { MicroserviceNode, SystemMetrics, LogEntry, ChaosState } from './types/telemetry';
+import { ServiceNodeCard } from './components/ServiceNodeCard';
+import { TelemetryChart } from './components/TelemetryChart';
+import { LiveLogStream } from './components/LiveLogStream';
+import { ChaosPanel } from './components/ChaosPanel';
+import { Activity, Shield, Server, Gauge, Radio } from 'lucide-react';
 
-function App() {
-  const [count, setCount] = useState(0)
+const API_URL = 'http://localhost:4000';
+const WS_URL = 'ws://localhost:4000';
+
+export const App: React.FC = () => {
+  const [nodes, setNodes] = useState<MicroserviceNode[]>([]);
+  const [metricsHistory, setMetricsHistory] = useState<SystemMetrics[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [chaosState, setChaosState] = useState<ChaosState>({ spikeTest: false, offlineNodes: [] });
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  useEffect(() => {
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => setIsConnected(true);
+    ws.onclose = () => setIsConnected(false);
+
+    ws.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+
+      if (payload.type === 'INIT_STATE') {
+        setChaosState(payload.chaosState);
+      }
+
+      if (payload.type === 'TELEMETRY_UPDATE') {
+        const { nodes: updatedNodes, metrics, log } = payload.data;
+        setNodes(updatedNodes);
+        setChaosState(payload.chaosState);
+
+        setMetricsHistory((prev) => [...prev.slice(-20), metrics]);
+        setLogs((prev) => [log, ...prev.slice(0, 49)]);
+      }
+    };
+
+    return () => ws.close();
+  }, []);
+
+  const handleToggleOffline = async (nodeId: string) => {
+    await fetch(`${API_URL}/api/chaos/toggle-node`, {
+      method: 'POST',
+      headers: { 'Content-[#Type]': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodeId })
+    });
+  };
+
+  const handleToggleSpike = async (active: boolean) => {
+    await fetch(`${API_URL}/api/chaos/spike-test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active })
+    });
+  };
+
+  const currentMetrics = metricsHistory[metricsHistory.length - 1];
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="min-h-screen bg-luxury-bg text-slate-100 p-6 md:p-10">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-8 border-b border-slate-800 gap-4">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg text-luxury-gold">
+              <Activity className="w-6 h-6" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-wider text-slate-100 font-mono">
+              PULSE<span className="text-luxury-gold">ENGINE</span>
+            </h1>
+          </div>
+          <p className="text-xs text-slate-400">Plataforma de Observabilidade & Telemetria em Tempo Real</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs">
+            <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-rose-500'}`} />
+            <span className="text-slate-400">WebSocket:</span>
+            <span className="font-mono font-bold">{isConnected ? 'CONECTADO' : 'DESCONECTADO'}</span>
+          </div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+      </header>
+
+      {/* High Level Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-luxury-card p-4 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Throughput Global</span>
+            <Gauge className="w-4 h-4 text-luxury-gold" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100">{currentMetrics?.totalRpm || 0} <span className="text-xs font-normal text-slate-500">RPM</span></p>
         </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
+        <div className="bg-luxury-card p-4 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Latência Média</span>
+            <Activity className="w-4 h-4 text-cyan-400" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100">{currentMetrics?.avgLatency || 0} <span className="text-xs font-normal text-slate-500">ms</span></p>
+        </div>
 
-export default App
+        <div className="bg-luxury-card p-4 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Taxa de Erros</span>
+            <Shield className="w-4 h-4 text-rose-400" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100">{currentMetrics?.errorRate || 0}%</p>
+        </div>
+
+        <div className="bg-luxury-card p-4 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Nós Ativos</span>
+            <Server className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100">{currentMetrics?.activeNodes || 0} / {nodes.length}</p>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="space-y-8">
+        <ChaosPanel spikeTest={chaosState.spikeTest} onToggleSpike={handleToggleSpike} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-sm font-semibold tracking-wider text-slate-400 uppercase">Microserviços Monitorados</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {nodes.map((node) => (
+                <ServiceNodeCard key={node.id} node={node} onToggleOffline={handleToggleOffline} />
+              ))}
+            </div>
+            <TelemetryChart data={metricsHistory} />
+          </div>
+
+          <div className="space-y-6">
+            <h2 className="text-sm font-semibold tracking-wider text-slate-400 uppercase">Stream de Telemetria</h2>
+            <LiveLogStream logs={logs} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
-import { TelemetryEngine } from './telemetryEngine.js';
+import { TelemetryEngine } from './telemetryEngine';
 
 const PORT = process.env.PORT || 4000;
 const app = express();
