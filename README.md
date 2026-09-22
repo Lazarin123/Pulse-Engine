@@ -8,7 +8,7 @@
   </h1>
 
   <p align="center">
-    <b>Plataforma de Observabilidade & Telemetria de Microserviços em Tempo Real</b>
+    <b>Plataforma de Observabilidade & Telemetria de Microserviços em Tempo Real Web</b>
   </p>
 
   <p align="center">
